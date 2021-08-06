@@ -6,13 +6,20 @@ import org.reactivestreams.Subscription;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 public class PubSub {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+
         Publisher<Integer> publisher = new Publisher<Integer>() {
 
             Iterable<Integer> iterable = Arrays.asList(1, 2, 3, 4, 5);
+
 
             @Override
             public void subscribe(Subscriber s) {
@@ -22,18 +29,21 @@ public class PubSub {
                 s.onSubscribe(new Subscription() {
                     @Override
                     public void request(long n) {
-                        try {
-                            while (n-- > 0) {
-                                if (it.hasNext()) {
-                                    s.onNext(it.next());
-                                } else {
-                                    s.onComplete();
-                                    break;
+                        executorService.execute(() -> {
+                            try {
+                                long nn = n;
+                                while (nn-- > 0) {
+                                    if (it.hasNext()) {
+                                        s.onNext(it.next());
+                                    } else {
+                                        s.onComplete();
+                                        break;
+                                    }
                                 }
+                            } catch (Exception e) {
+                                s.onError(e);
                             }
-                        } catch (Exception e) {
-                            s.onError(e);
-                        }
+                        });
                     }
 
                     @Override
@@ -51,14 +61,14 @@ public class PubSub {
 
             @Override
             public void onSubscribe(Subscription s) {
-                System.out.println("onSubscribe");
+                System.out.println(Thread.currentThread().getName() + " onSubscribe");
                 this.subscription = s;
                 subscription.request(1);
             }
 
             @Override
             public void onNext(Integer item) {
-                System.out.println("onNext " + item);
+                System.out.println(Thread.currentThread().getName() + " onNext " + item);
                 subscription.request(1);
             }
 
@@ -74,7 +84,9 @@ public class PubSub {
         };
 
         publisher.subscribe(subscriber);
+        System.out.println(Thread.currentThread().getName() + " Main End");
+        executorService.awaitTermination(10, TimeUnit.DAYS);
+        executorService.shutdown();
+
     }
-
-
 }
