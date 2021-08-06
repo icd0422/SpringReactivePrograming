@@ -3,11 +3,18 @@ package com.example.reactivepractice.duality;
 import java.util.Iterator;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Main {
     public static void main(String[] args) {
         //pull();
         push();
+        /*
+        옵져버 패턴의 한계
+        1.Complete??
+        2.Error??
+         */
     }
 
 
@@ -38,13 +45,19 @@ public class Main {
         Observer observer = new Observer() {
             @Override
             public void update(Observable o, Object arg) {
-                System.out.println(arg);
+                System.out.println(Thread.currentThread().getName() + " " + arg);
             }
         };
 
         IntObservable observable = new IntObservable();
         observable.addObserver(observer);
-        observable.run();
+
+
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        executorService.execute(observable);
+
+        System.out.println(Thread.currentThread().getName() + " Exit");
+        executorService.shutdown();
     }
 
 
