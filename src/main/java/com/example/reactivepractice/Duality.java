@@ -1,4 +1,4 @@
-package com.example.reactivepractice.duality;
+package com.example.reactivepractice;
 
 import java.util.Iterator;
 import java.util.Observable;
@@ -6,7 +6,7 @@ import java.util.Observer;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class Main {
+public class Duality {
     public static void main(String[] args) {
         //pull();
         push();
