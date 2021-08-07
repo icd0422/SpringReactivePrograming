@@ -4,6 +4,7 @@ import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -17,10 +18,34 @@ public class PubSub2 {
         Publisher<Integer> mapPublisher = getMapPublisher(originPublisher, a -> a * 10);
         Publisher<Integer> mapPublisher2 = getMapPublisher(mapPublisher, a -> -1 * a);
         Publisher<Integer> sumPublisher = getSumPublisher(originPublisher);
+        Publisher<Integer> reducePublisher = getReducePublisher(originPublisher, 0, (a, b) -> a + b);
 
         Subscriber<Integer> subscriber = getLogSubscriber();
 
-        sumPublisher.subscribe(subscriber);
+        reducePublisher.subscribe(subscriber);
+    }
+
+    static Publisher<Integer> getReducePublisher(Publisher<Integer> originPublisher, int init, BiFunction<Integer, Integer, Integer> bf) {
+        return new Publisher<Integer>() {
+            @Override
+            public void subscribe(Subscriber<? super Integer> originSubscriber) {
+                originPublisher.subscribe(new DelegateSubscriber(originSubscriber) {
+
+                    int initValue = init;
+
+                    @Override
+                    public void onNext(Integer i) {
+                        initValue = bf.apply(initValue, i);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        originSubscriber.onNext(initValue);
+                        originSubscriber.onComplete();
+                    }
+                });
+            }
+        };
     }
 
     static Publisher<Integer> getMapPublisher(Publisher<Integer> originPublisher, Function<Integer, Integer> function) {
