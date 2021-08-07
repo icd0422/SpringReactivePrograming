@@ -18,6 +18,7 @@ public class Async {
                 s.onSubscribe(new Subscription() {
                     @Override
                     public void request(long n) {
+                        log.debug("request");
                         s.onNext(1);
                         s.onNext(2);
                         s.onNext(3);
@@ -55,17 +56,48 @@ public class Async {
             }
         };
 
-        Publisher<Integer> subOnPublisher = new Publisher<Integer>() {
+//        Publisher<Integer> subOnPublisher = new Publisher<Integer>() {
+//            @Override
+//            public void subscribe(Subscriber<? super Integer> s) {
+//                ExecutorService executorService = Executors.newSingleThreadExecutor();
+//                executorService.execute(() -> {
+//                    originPublisher.subscribe(s);
+//                });
+//            }
+//        };
+
+        Publisher<Integer> publishOnPublisher = new Publisher<Integer>() {
             @Override
-            public void subscribe(Subscriber<? super Integer> s) {
-                ExecutorService executorService = Executors.newSingleThreadExecutor();
-                executorService.execute(() -> {
-                    originPublisher.subscribe(s);
+            public void subscribe(Subscriber<? super Integer> originSubscriber) {
+                originPublisher.subscribe(new Subscriber<Integer>() {
+
+                    ExecutorService executorService = Executors.newSingleThreadExecutor();
+
+                    @Override
+                    public void onSubscribe(Subscription s) {
+                        originSubscriber.onSubscribe(s);
+                    }
+
+                    @Override
+                    public void onNext(Integer integer) {
+                        executorService.execute(() -> originSubscriber.onNext(integer));
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        executorService.execute(() -> originSubscriber.onError(t));
+
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        executorService.execute(() -> originSubscriber.onComplete());
+                    }
                 });
             }
         };
 
-        subOnPublisher.subscribe(logSubscriber);
+        publishOnPublisher.subscribe(logSubscriber);
         log.debug("exit");
     }
 }
