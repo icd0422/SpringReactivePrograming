@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.core.publisher.Flux;
+import org.springframework.scheduling.concurrent.CustomizableThreadFactory;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -56,22 +56,36 @@ public class Async {
             }
         };
 
-//        Publisher<Integer> subOnPublisher = new Publisher<Integer>() {
-//            @Override
-//            public void subscribe(Subscriber<? super Integer> s) {
-//                ExecutorService executorService = Executors.newSingleThreadExecutor();
-//                executorService.execute(() -> {
-//                    originPublisher.subscribe(s);
-//                });
-//            }
-//        };
+        Publisher<Integer> subscribeOnPublisher = new Publisher<Integer>() {
+            @Override
+            public void subscribe(Subscriber<? super Integer> s) {
+                ExecutorService executorService = Executors.newSingleThreadExecutor(
+                        new CustomizableThreadFactory() {
+                            @Override
+                            public String getThreadNamePrefix() {
+                                return "subOn-";
+                            }
+                        }
+                );
+                executorService.execute(() -> {
+                    originPublisher.subscribe(s);
+                });
+            }
+        };
 
         Publisher<Integer> publishOnPublisher = new Publisher<Integer>() {
             @Override
             public void subscribe(Subscriber<? super Integer> originSubscriber) {
-                originPublisher.subscribe(new Subscriber<Integer>() {
+                subscribeOnPublisher.subscribe(new Subscriber<Integer>() {
 
-                    ExecutorService executorService = Executors.newSingleThreadExecutor();
+                    ExecutorService executorService = Executors.newSingleThreadExecutor(
+                            new CustomizableThreadFactory() {
+                                @Override
+                                public String getThreadNamePrefix() {
+                                    return "pubOn-";
+                                }
+                            }
+                    );
 
                     @Override
                     public void onSubscribe(Subscription s) {
